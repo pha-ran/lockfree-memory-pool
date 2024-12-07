@@ -24,7 +24,16 @@ unsigned __stdcall worker_func(void* index)
 
 	wprintf(L"[WORKER] %d\n", worker_id);
 
+	for (int i = 0; i < ALLOC_COUNT; ++i)
+	{
+		ptr[i] = mp.oalloc();
+		*ptr[i] = 0x1122334455667788;
+	}
+
 	while (!start);
+	
+	for (int i = 0; i < ALLOC_COUNT; ++i)
+		mp.ofree(ptr[i]);
 
 	for (;;)
 	{
@@ -69,16 +78,6 @@ int wmain(void) noexcept
 	timeBeginPeriod(1);
 	for (int i = 0; i < THREAD_COUNT; ++i)
 		handles[i] = (HANDLE)_beginthreadex(nullptr, 0, worker_func, nullptr, 0, nullptr);
-
-	unsigned long long* temp[THREAD_COUNT * ALLOC_COUNT];
-	for (int i = 0; i < THREAD_COUNT * ALLOC_COUNT; ++i)
-	{
-		temp[i] = mp.oalloc();
-		*(temp[i]) = 0x1122334455667788;
-	}
-	for (int i = 0; i < THREAD_COUNT * ALLOC_COUNT; ++i)
-		mp.ofree(temp[i]);
-
 	system("pause");
 	start = true;
 

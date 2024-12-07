@@ -60,7 +60,12 @@ public:
 			pointer_size next_top = (pointer_size)node->_next + (local_top & _top_counter_mask) + _increment_counter;
 			pointer_size prev_top = InterlockedCompareExchange(&_top, next_top, local_top);
 			if (prev_top == local_top)
+			{
+#ifdef _DEBUG
+				InterlockedDecrement(&_size);
+#endif
 				return (T*)((char*)node + offsetof(NODE, _data));
+			}
 		}
 	}
 
@@ -74,7 +79,13 @@ public:
 			node->_next = (NODE*)(local_top & _user_address_mask);
 			pointer_size next_top = (pointer_size)node + (local_top & _top_counter_mask) + _increment_counter;
 			pointer_size prev_top = InterlockedCompareExchange(&_top, next_top, local_top);
-			if (prev_top == local_top) return;
+			if (prev_top == local_top)
+			{
+#ifdef _DEBUG
+				InterlockedIncrement(&_size);
+#endif
+				return;
+			}
 		}
 	}
 
@@ -87,5 +98,9 @@ private:
 
 private:
 	pointer_size _top;
+
+#ifdef _DEBUG
+	unsigned long _size;
+#endif
 
 };
