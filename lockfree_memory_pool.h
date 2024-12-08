@@ -34,12 +34,24 @@ public:
 		GetSystemInfo(&si);
 		if ((pointer_size)si.lpMaximumApplicationAddress ^ _user_address_max) __debugbreak();
 
-		// todo
+		while (count > 0)
+		{
+			ofree((T*)((char*)(::new(std::nothrow) NODE) + offsetof(NODE, _data)));
+			--count;
+		}
 	}
 
 	inline ~lockfree_memory_pool(void) noexcept
 	{
-		// todo
+		NODE* node = (NODE*)(_top & _user_address_mask);
+		_top = 0;
+
+		while (node != nullptr)
+		{
+			NODE* next = node->_next;
+			delete node;
+			node = next;
+		}
 	}
 
 	lockfree_memory_pool(lockfree_memory_pool&) = delete;

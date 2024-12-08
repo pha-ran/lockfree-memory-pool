@@ -7,15 +7,16 @@
 #include "lockfree_memory_pool.h"
 #include <process.h>
 #include <stdio.h>
+#include <conio.h>
 
 #pragma comment(lib, "winmm.lib")
 
-#define THREAD_COUNT	10
+#define THREAD_COUNT	4
 #define ALLOC_COUNT		1000
 
 HANDLE handles[THREAD_COUNT];
 bool start = 0;
-lockfree_memory_pool<unsigned long long> mp;
+lockfree_memory_pool<unsigned long long> mp((unsigned int)(THREAD_COUNT * ALLOC_COUNT));
 
 unsigned __stdcall worker_func(void* index)
 {
@@ -64,7 +65,11 @@ unsigned __stdcall worker_func(void* index)
 			mp.ofree(ptr[i]);
 
 		Sleep(0);
+
+		if (!start) break;
 	}
+
+	Sleep(5000);
 
 	return 0;
 }
@@ -80,6 +85,17 @@ int wmain(void) noexcept
 		handles[i] = (HANDLE)_beginthreadex(nullptr, 0, worker_func, nullptr, 0, nullptr);
 	system("pause");
 	start = true;
+
+	for (;;)
+	{
+		char c = _getch();
+
+		if (c == 'q')
+		{
+			start = 0;
+			break;
+		}
+	}
 
 	DWORD wait = WaitForMultipleObjects(THREAD_COUNT, handles, TRUE, INFINITE);
 	if (wait != WAIT_OBJECT_0) __debugbreak();

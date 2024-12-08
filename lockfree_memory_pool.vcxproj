@@ -22,7 +22,6 @@
     <ClInclude Include="lockfree_memory_pool.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="lockfree_memory_pool.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
