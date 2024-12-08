@@ -36,15 +36,20 @@ public:
 
 		while (count > 0)
 		{
-			ofree((T*)((char*)(::new(std::nothrow) NODE) + offsetof(NODE, _data)));
+			NODE* temp = new(std::nothrow) NODE;
+#pragma warning(suppress:28182)
+			temp->_next = (NODE*)_top;
+			_top = (pointer_size)temp;
 			--count;
+#ifdef _DEBUG
+			InterlockedIncrement(&_size);
+#endif
 		}
 	}
 
 	inline ~lockfree_memory_pool(void) noexcept
 	{
 		NODE* node = (NODE*)(_top & _user_address_mask);
-		_top = 0;
 
 		while (node != nullptr)
 		{
@@ -99,6 +104,90 @@ public:
 				return;
 			}
 		}
+	}
+
+private:
+	struct NODE
+	{
+		NODE* _next;
+		T _data;
+	};
+
+private:
+	pointer_size _top;
+
+#ifdef _DEBUG
+	unsigned long _size;
+#endif
+
+};
+
+template <typename T>
+class lockfree_memory_pool<T, false> final
+{
+	using pointer_size = unsigned long long;
+
+public:
+	static constexpr pointer_size _user_address_max = 0x00007ffffffeffff;
+	static constexpr pointer_size _user_address_mask = 0x00007fffffffffff;
+
+	static constexpr pointer_size _top_counter_mask = 0xffff800000000000;
+	static constexpr pointer_size _increment_counter = 0x0000800000000000;
+
+public:
+	inline lockfree_memory_pool(void) noexcept
+		: _top(0)
+	{
+		SYSTEM_INFO si;
+		GetSystemInfo(&si);
+		if ((pointer_size)si.lpMaximumApplicationAddress ^ _user_address_max) __debugbreak();
+	}
+
+	inline lockfree_memory_pool(unsigned int count) noexcept
+		: _top(0)
+	{
+		SYSTEM_INFO si;
+		GetSystemInfo(&si);
+		if ((pointer_size)si.lpMaximumApplicationAddress ^ _user_address_max) __debugbreak();
+
+		while (count > 0)
+		{
+			NODE* temp = (NODE*)malloc(sizeof(NODE));
+			temp->_next = (NODE*)_top;
+			_top = (pointer_size)temp;
+			--count;
+#ifdef _DEBUG
+			InterlockedIncrement(&_size);
+#endif
+		}
+	}
+
+	inline ~lockfree_memory_pool(void) noexcept
+	{
+		NODE* node = (NODE*)(_top & _user_address_mask);
+
+		while (node != nullptr)
+		{
+			NODE* next = node->_next;
+			free(node);
+			node = next;
+		}
+	}
+
+	lockfree_memory_pool(lockfree_memory_pool&) = delete;
+	lockfree_memory_pool(lockfree_memory_pool&&) = delete;
+	lockfree_memory_pool& operator=(lockfree_memory_pool&) = delete;
+	lockfree_memory_pool& operator=(lockfree_memory_pool&&) = delete;
+
+public:
+	inline T* oalloc(void) noexcept
+	{
+		;
+	}
+
+	inline void ofree(T* ptr) noexcept
+	{
+		;
 	}
 
 private:

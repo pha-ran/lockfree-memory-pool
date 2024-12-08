@@ -100,6 +100,8 @@ int wmain(void) noexcept
 	DWORD wait = WaitForMultipleObjects(THREAD_COUNT, handles, TRUE, INFINITE);
 	if (wait != WAIT_OBJECT_0) __debugbreak();
 	for (int i = 0; i < THREAD_COUNT; ++i)
+#pragma warning(suppress:6001)
+#pragma warning(suppress:28183)
 		CloseHandle(handles[i]);
 	timeEndPeriod(1);
 
