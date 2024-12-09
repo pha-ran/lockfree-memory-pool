@@ -134,11 +134,11 @@ class lockfree_memory_pool<T, false> final
 	using pointer_size = unsigned long long;
 
 public:
-	static constexpr pointer_size _user_address_max = 0x00007ffffffeffff;
-	static constexpr pointer_size _user_address_mask = 0x00007fffffffffff;
+	static constexpr pointer_size _user_address_max		= 0x00007ffffffeffff;
+	static constexpr pointer_size _user_address_mask	= 0x00007fffffffffff;
 
-	static constexpr pointer_size _top_counter_mask = 0xffff800000000000;
-	static constexpr pointer_size _increment_counter = 0x0000800000000000;
+	static constexpr pointer_size _top_counter_mask		= 0xffff800000000000;
+	static constexpr pointer_size _increment_counter	= 0x0000800000000000;
 
 public:
 	inline lockfree_memory_pool(void) noexcept
@@ -244,6 +244,8 @@ public:
 private:
 	union NODE
 	{
+		~NODE(void) = delete;
+
 		NODE* _next;
 		T _data;
 	};

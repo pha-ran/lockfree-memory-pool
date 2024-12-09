@@ -21,13 +21,13 @@ public:
 		: _value(0x1122334455667788)
 	{
 		_ptr = new char;
-		//wprintf(L"test\n");
+		wprintf(L"test\n");
 	}
 
 	~test(void) noexcept
 	{
 		delete _ptr;
-		//wprintf(L"~test\n");
+		wprintf(L"~test\n");
 	}
 
 public:
@@ -38,7 +38,7 @@ public:
 
 HANDLE handles[THREAD_COUNT];
 bool start = 0;
-lockfree_memory_pool<test, true> mp((unsigned int)(THREAD_COUNT * ALLOC_COUNT));
+lockfree_memory_pool<test, false> mp((unsigned int)(THREAD_COUNT * ALLOC_COUNT));
 
 unsigned __stdcall worker_func(void*)
 {
@@ -60,6 +60,7 @@ unsigned __stdcall worker_func(void*)
 		{
 			test* data = ptr[i];
 			if (InterlockedIncrement(&data->_value) != 0x1122334455667789) __debugbreak();
+			*(data->_ptr) = 0xaa;
 		}
 
 		Sleep(0);
