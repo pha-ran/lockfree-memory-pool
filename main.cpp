@@ -14,27 +14,40 @@
 #define THREAD_COUNT	4
 #define ALLOC_COUNT		1000
 
+class test
+{
+public:
+	test(void) noexcept
+		: _value(0x1122334455667788)
+	{
+		_ptr = new char;
+		//wprintf(L"test\n");
+	}
+
+	~test(void) noexcept
+	{
+		delete _ptr;
+		//wprintf(L"~test\n");
+	}
+
+public:
+	unsigned long long _value;
+	char* _ptr;
+
+};
+
 HANDLE handles[THREAD_COUNT];
 bool start = 0;
-lockfree_memory_pool<unsigned long long> mp((unsigned int)(THREAD_COUNT * ALLOC_COUNT));
+lockfree_memory_pool<test, true> mp((unsigned int)(THREAD_COUNT * ALLOC_COUNT));
 
-unsigned __stdcall worker_func(void* index)
+unsigned __stdcall worker_func(void*)
 {
 	int worker_id = GetCurrentThreadId();
-	unsigned long long* ptr[ALLOC_COUNT];
+	test* ptr[ALLOC_COUNT];
 
 	wprintf(L"[WORKER] %d\n", worker_id);
 
-	for (int i = 0; i < ALLOC_COUNT; ++i)
-	{
-		ptr[i] = mp.oalloc();
-		*ptr[i] = 0x1122334455667788;
-	}
-
 	while (!start);
-	
-	for (int i = 0; i < ALLOC_COUNT; ++i)
-		mp.ofree(ptr[i]);
 
 	for (;;)
 	{
@@ -45,18 +58,16 @@ unsigned __stdcall worker_func(void* index)
 
 		for (int i = 0; i < ALLOC_COUNT; ++i)
 		{
-			unsigned long long* data = ptr[i];
-			*data += 1;
-			if (*data != 0x1122334455667789) __debugbreak();
+			test* data = ptr[i];
+			if (InterlockedIncrement(&data->_value) != 0x1122334455667789) __debugbreak();
 		}
 
 		Sleep(0);
 
 		for (int i = 0; i < ALLOC_COUNT; ++i)
 		{
-			unsigned long long* data = ptr[i];
-			*data -= 1;
-			if (*data != 0x1122334455667788) __debugbreak();
+			test* data = ptr[i];
+			if (InterlockedDecrement(&data->_value) != 0x1122334455667788) __debugbreak();
 		}
 
 		Sleep(0);
@@ -69,7 +80,7 @@ unsigned __stdcall worker_func(void* index)
 		if (!start) break;
 	}
 
-	Sleep(5000);
+	Sleep(3000);
 
 	return 0;
 }

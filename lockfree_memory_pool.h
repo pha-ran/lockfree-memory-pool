@@ -21,6 +21,9 @@ public:
 public:
 	inline lockfree_memory_pool(void) noexcept
 		: _top(0)
+#ifdef _DEBUG
+		, _size(0)
+#endif
 	{
 		SYSTEM_INFO si;
 		GetSystemInfo(&si);
@@ -29,6 +32,9 @@ public:
 
 	inline lockfree_memory_pool(unsigned int count) noexcept
 		: _top(0)
+#ifdef _DEBUG
+		, _size(0)
+#endif
 	{
 		SYSTEM_INFO si;
 		GetSystemInfo(&si);
@@ -42,7 +48,7 @@ public:
 			_top = (pointer_size)temp;
 			--count;
 #ifdef _DEBUG
-			InterlockedIncrement(&_size);
+			++_size;
 #endif
 		}
 	}
@@ -137,6 +143,9 @@ public:
 public:
 	inline lockfree_memory_pool(void) noexcept
 		: _top(0)
+#ifdef _DEBUG
+		, _size(0)
+#endif
 	{
 		SYSTEM_INFO si;
 		GetSystemInfo(&si);
@@ -145,6 +154,9 @@ public:
 
 	inline lockfree_memory_pool(unsigned int count) noexcept
 		: _top(0)
+#ifdef _DEBUG
+		, _size(0)
+#endif
 	{
 		SYSTEM_INFO si;
 		GetSystemInfo(&si);
@@ -157,7 +169,7 @@ public:
 			_top = (pointer_size)temp;
 			--count;
 #ifdef _DEBUG
-			InterlockedIncrement(&_size);
+			++_size;
 #endif
 		}
 	}
@@ -182,16 +194,55 @@ public:
 public:
 	inline T* oalloc(void) noexcept
 	{
-		;
+		NODE* node;
+
+		for (;;)
+		{
+			pointer_size local_top = _top;
+			node = (NODE*)(local_top & _user_address_mask);
+			if (node == nullptr)
+			{
+				node = (NODE*)malloc(sizeof(NODE));
+				break;
+			}
+
+			pointer_size next_top = (pointer_size)node->_next + (local_top & _top_counter_mask) + _increment_counter;
+			pointer_size prev_top = InterlockedCompareExchange(&_top, next_top, local_top);
+			if (prev_top == local_top)
+			{
+#ifdef _DEBUG
+				InterlockedDecrement(&_size);
+#endif
+				break;
+			}
+		}
+
+		return new(node) T;
 	}
 
 	inline void ofree(T* ptr) noexcept
 	{
-		;
+		ptr->~T();
+		NODE* node = (NODE*)ptr;
+
+		for (;;)
+		{
+			pointer_size local_top = _top;
+			node->_next = (NODE*)(local_top & _user_address_mask);
+			pointer_size next_top = (pointer_size)node + (local_top & _top_counter_mask) + _increment_counter;
+			pointer_size prev_top = InterlockedCompareExchange(&_top, next_top, local_top);
+			if (prev_top == local_top)
+			{
+#ifdef _DEBUG
+				InterlockedIncrement(&_size);
+#endif
+				return;
+			}
+		}
 	}
 
 private:
-	struct NODE
+	union NODE
 	{
 		NODE* _next;
 		T _data;
